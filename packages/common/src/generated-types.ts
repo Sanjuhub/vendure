@@ -5688,6 +5688,11 @@ export type QueryOrdersArgs = {
   options?: InputMaybe<OrderListOptions>;
 };
 
+export type QueryOrderSummaryArgs = {
+  end: Scalars['DateTime']['input'];
+  start: Scalars['DateTime']['input'];
+};
+
 
 export type QueryPaymentMethodArgs = {
   id: Scalars['ID']['input'];

@@ -11,6 +11,14 @@ import { orderSummaryQuery } from './order-summary-widget.graphql.js';
 
 const WIDGET_ID = 'orders-summary-widget';
 
+type OrderSummaryResult = {
+    orderSummary: {
+        totalOrders: number;
+        totalOrderValue: number;
+        currencyCode?: string | null;
+    };
+};
+
 interface PercentageChangeProps {
     value: number;
 }
@@ -46,22 +54,26 @@ export function OrdersSummaryWidget() {
         };
     }, [dateRange]);
 
-    const { data } = useQuery({
+    const queryFn = async (): Promise<OrderSummaryResult> =>
+        api.query(orderSummaryQuery, {
+            start: variables.start,
+            end: variables.end,
+        }) as Promise<OrderSummaryResult>;
+
+    const previousQueryFn = async (): Promise<OrderSummaryResult> =>
+        api.query(orderSummaryQuery, {
+            start: variables.previousStart,
+            end: variables.previousEnd,
+        }) as Promise<OrderSummaryResult>;
+
+    const { data } = useQuery<OrderSummaryResult>({
         queryKey: ['orders-summary', dateRange],
-        queryFn: () =>
-            api.query(orderSummaryQuery, {
-                start: variables.start,
-                end: variables.end,
-            }),
+        queryFn,
     });
 
-    const { data: previousData } = useQuery({
+    const { data: previousData } = useQuery<OrderSummaryResult>({
         queryKey: ['orders-summary', 'previous', dateRange],
-        queryFn: () =>
-            api.query(orderSummaryQuery, {
-                start: variables.previousStart,
-                end: variables.previousEnd,
-            }),
+        queryFn: previousQueryFn,
     });
 
     const calculatePercentChange = (current: number, previous: number) => {
@@ -69,11 +81,10 @@ export function OrdersSummaryWidget() {
         return ((current - previous) / previous) * 100;
     };
 
-    const currentTotalOrders = data?.orders.totalItems ?? 0;
-    const previousTotalOrders = previousData?.orders.totalItems ?? 0;
-    const currentRevenue = data?.orders.items.reduce((acc, order) => acc + order.totalWithTax, 0) ?? 0;
-    const previousRevenue =
-        previousData?.orders.items.reduce((acc, order) => acc + order.totalWithTax, 0) ?? 0;
+    const currentTotalOrders = data?.orderSummary.totalOrders ?? 0;
+    const previousTotalOrders = previousData?.orderSummary.totalOrders ?? 0;
+    const currentRevenue = data?.orderSummary.totalOrderValue ?? 0;
+    const previousRevenue = previousData?.orderSummary.totalOrderValue ?? 0;
 
     const orderChange = calculatePercentChange(currentTotalOrders, previousTotalOrders);
     const revenueChange = calculatePercentChange(currentRevenue, previousRevenue);

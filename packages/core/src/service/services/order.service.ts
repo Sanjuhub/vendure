@@ -356,6 +356,42 @@ export class OrderService {
             });
     }
 
+    async getOrderSummary(
+        ctx: RequestContext,
+        start: Date,
+        end: Date,
+    ): Promise<{ totalOrders: number; totalOrderValue: number; currencyCode?: CurrencyCode | null }> {
+        const rows = await this.connection
+            .getRepository(ctx, Order)
+            .createQueryBuilder('order')
+            .select('COUNT(order.id)', 'totalOrders')
+            .addSelect('COALESCE(SUM(order.subTotalWithTax + order.shippingWithTax), 0)', 'totalOrderValue')
+            .addSelect('order.currencyCode', 'currencyCode')
+            .leftJoin('order.channels', 'channel')
+            .where('order.orderPlacedAt BETWEEN :start AND :end', { start, end })
+            .andWhere('channel.id = :channelId', { channelId: ctx.channelId })
+            .andWhere('order.state != :draftState', { draftState: 'Draft' })
+            .groupBy('order.currencyCode')
+            .getRawMany<{
+                totalOrders: string;
+                totalOrderValue: string;
+                currencyCode: CurrencyCode;
+            }>();
+
+        if (rows.length === 0) {
+            return {
+                totalOrders: 0,
+                totalOrderValue: 0,
+            };
+        }
+
+        return {
+            totalOrders: rows.reduce((sum, row) => sum + Number(row.totalOrders), 0),
+            totalOrderValue: rows.reduce((sum, row) => sum + Number(row.totalOrderValue), 0),
+            currencyCode: rows.length === 1 ? rows[0].currencyCode : undefined,
+        };
+    }
+
     /**
      * @description
      * Returns all {@link Payment} entities associated with the Order.

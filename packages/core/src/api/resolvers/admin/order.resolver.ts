@@ -21,6 +21,7 @@ import {
     MutationUpdateOrderNoteArgs,
     Permission,
     QueryOrderArgs,
+    QueryOrderSummaryArgs,
     QueryOrdersArgs,
     RefundOrderResult,
     SettlePaymentResult,
@@ -59,6 +60,15 @@ export class OrderResolver {
         @Relations(Order) relations: RelationPaths<Order>,
     ): Promise<PaginatedList<Order>> {
         return this.orderService.findAll(ctx, args.options || undefined, relations);
+    }
+
+    @Query()
+    @Allow(Permission.ReadOrder)
+    orderSummary(
+        @Ctx() ctx: RequestContext,
+        @Args() args: QueryOrderSummaryArgs,
+    ): Promise<{ totalOrders: number; totalOrderValue: number; currencyCode?: string | null }> {
+        return this.orderService.getOrderSummary(ctx, args.start, args.end);
     }
 
     @Query()

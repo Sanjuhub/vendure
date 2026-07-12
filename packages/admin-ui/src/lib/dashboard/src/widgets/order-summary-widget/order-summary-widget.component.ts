@@ -9,13 +9,10 @@ export type Timeframe = 'day' | 'week' | 'month';
 
 export const GET_ORDER_SUMMARY = gql`
     query GetOrderSummary($start: DateTime!, $end: DateTime!) {
-        orders(options: { filter: { orderPlacedAt: { between: { start: $start, end: $end } } } }) {
-            totalItems
-            items {
-                id
-                totalWithTax
-                currencyCode
-            }
+        orderSummary(start: $start, end: $end) {
+            totalOrders
+            totalOrderValue
+            currencyCode
         }
     }
 `;
@@ -55,14 +52,12 @@ export class OrderSummaryWidgetComponent implements OnInit {
                 this.dataService
                     .query(GetOrderSummaryDocument, { start: start.toISOString(), end: end.toISOString() })
                     .refetchOnChannelChange()
-                    .mapStream(data => data.orders),
+                    .mapStream(data => data.orderSummary),
             ),
             shareReplay(1),
         );
-        this.totalOrderCount$ = orderSummary$.pipe(map(res => res.totalItems));
-        this.totalOrderValue$ = orderSummary$.pipe(
-            map(res => res.items.reduce((total, order) => total + order.totalWithTax, 0)),
-        );
+        this.totalOrderCount$ = orderSummary$.pipe(map(res => res.totalOrders));
+        this.totalOrderValue$ = orderSummary$.pipe(map(res => res.totalOrderValue));
         this.currencyCode$ = this.dataService.settings
             .getActiveChannel()
             .refetchOnChannelChange()
